@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>A2 Construction — Attendance & Payroll</title>
+<style>
+:root{
+  --primary:#1565C0;--primary-dark:#0D47A1;--primary-light:#E3F2FD;
+  --accent:#FF6F00;--success:#2E7D32;--warning:#F57F17;--danger:#C62828;
+  --bg:#F5F7FA;--surface:#FFFFFF;--border:#DEE3EC;--text:#1A2340;--muted:#6B7A99;
+  --nav-h:60px;--header-h:56px;--radius:10px;--shadow:0 2px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Layout ── */
+#app{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.view{display:none;flex-direction:column;height:100%;overflow:hidden}
+.view.active{display:flex}
+
+/* ── Header ── */
+.header{height:var(--header-h);background:var(--primary);color:#fff;
+  display:flex;align-items:center;gap:10px;padding:0 16px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header h1{font-size:17px;font-weight:600;flex:1}
+.header .badge{background:rgba(255,255,255,.2);padding:3px 8px;border-radius:20px;font-size:11px}
+.btn-icon{background:none;border:none;color:#fff;cursor:pointer;padding:8px;
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.btn-icon:hover{background:rgba(255,255,255,.15)}
+
+/* ── Bottom Nav ── */
+#nav{height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border);
+  display:flex;align-items:stretch;flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;border:none;background:none;cursor:pointer;padding:6px 2px;
+  font-size:9.5px;font-weight:500;color:var(--muted);transition:.15s}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{color:var(--primary)}
+.nav-item.active svg{stroke:var(--primary);fill:var(--primary-light)}
+
+/* ── Scroll Container ── */
+.scroll{flex:1;overflow-y:auto;padding:12px}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── Cards / Stats ── */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:14px;
+  box-shadow:var(--shadow);border-left:4px solid var(--primary)}
+.stat-card.green{border-color:var(--success)}.stat-card.orange{border-color:var(--accent)}
+.stat-card.red{border-color:var(--danger)}
+.stat-num{font-size:26px;font-weight:700;line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ── Lists ── */
+.list-card{background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;margin-bottom:10px}
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:.1s}
+.list-item:last-child{border-bottom:none}
+.list-item:hover,.list-item:active{background:var(--primary-light)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--primary);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;flex-shrink:0}
+.item-info{flex:1;min-width:0}
+.item-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-right{text-align:right;flex-shrink:0}
+.item-val{font-weight:600;font-size:14px}
+.item-date{font-size:11px;color:var(--muted)}
+
+/* ── Status Chips ── */
+.chip{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;
+  font-size:11px;font-weight:600}
+.chip-green{background:#E8F5E9;color:var(--success)}
+.chip-red{background:#FFEBEE;color:var(--danger)}
+.chip-orange{background:#FFF3E0;color:var(--accent)}
+.chip-blue{background:var(--primary-light);color:var(--primary)}
+.chip-gray{background:#ECEFF1;color:var(--muted)}
+
+/* ── Search ── */
+.search-bar{display:flex;gap:8px;margin-bottom:10px}
+.search-input{flex:1;border:1px solid var(--border);border-radius:var(--radius);
+  padding:9px 12px;font-size:14px;background:var(--surface);outline:none;color:var(--text)}
+.search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+.btn-filter{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:9px 12px;cursor:pointer;font-size:18px}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 14px);right:16px;
+  width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;
+  border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 14px rgba(21,101,192,.4);
+  display:flex;align-items:center;justify-content:center;z-index:50;transition:.2s}
+.fab:hover{background:var(--primary-dark);transform:scale(1.05)}
+
+/* ── Modal / Drawer ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100}
+.overlay.open{display:block}
+.drawer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-radius:18px 18px 0 0;
+  padding:0 0 env(safe-area-inset-bottom,0);max-height:92dvh;display:flex;flex-direction:column;
+  z-index:101;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.drawer.open{transform:translateY(0)}
+.drawer-handle{width:40px;height:4px;background:var(--border);border-radius:2px;
+  margin:10px auto 0}
+.drawer-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.drawer-title{font-size:16px;font-weight:700;flex:1}
+.drawer-body{flex:1;overflow-y:auto;padding:16px}
+
+/* ── Forms ── */
+.form-group{margin-bottom:14px}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.form-control{width:100%;border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px 12px;font-size:14px;background:var(--surface);outline:none;color:var(--text);
+  transition:.15s}
+.form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236B7A99' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--radius);font-size:15px;
+  font-weight:600;cursor:pointer;transition:.15s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-group{display:flex;gap:8px;margin-top:8px}
+.btn-group .btn{flex:1}
+
+/* ── Section Headers ── */
+.section-title{font-size:12px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.8px;margin:12px 0 8px}
+
+/* ── Att Grid ── */
+.att-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.att-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:600;cursor:pointer;
+  background:var(--border);color:var(--muted);transition:.1s}
+.att-cell.present{background:var(--success);color:#fff}
+.att-cell.absent{background:var(--danger);color:#fff}
+.att-cell.half{background:var(--warning);color:#fff}
+.att-cell.ot{background:var(--accent);color:#fff}
+.att-cell.holiday{background:#AB47BC;color:#fff}
+.att-cell.day-label{background:none;cursor:default;font-size:9px}
+
+/* ── Payroll Table ── */
+.payroll-table{width:100%;border-collapse:collapse;font-size:13px}
+.payroll-table th{background:var(--primary);color:#fff;padding:8px 10px;text-align:left;
+  font-size:11px;font-weight:600}
+.payroll-table td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.payroll-table tr:last-child td{border-bottom:none}
+.payroll-table .total-row{background:var(--primary-light);font-weight:700}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:calc(var(--nav-h) + 80px);left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1A2340;color:#fff;padding:10px 18px;border-radius:30px;font-size:13px;
+  opacity:0;transition:.3s;pointer-events:none;z-index:200;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Empty State ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:200px;gap:8px;color:var(--muted)}
+.empty-icon{font-size:48px}
+.empty p{font-size:14px}
+
+/* ── Connection status ── */
+.conn-bar{font-size:11px;padding:4px 16px;display:flex;align-items:center;gap:6px;
+  flex-shrink:0;border-bottom:1px solid var(--border)}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--success)}
+.conn-dot.offline{background:var(--warning)}
+
+/* ── Responsive ── */
+@media(min-width:640px){
+  .stat-grid{grid-template-columns:repeat(4,1fr)}
+  #nav{max-width:600px;margin:0 auto;border-radius:var(--radius) var(--radius) 0 0;
+    border:1px solid var(--border)}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Connection bar ── -->
+<div class="conn-bar" id="connBar">
+  <div class="conn-dot" id="connDot"></div>
+  <span id="connText">Connecting to Supabase…</span>
+</div>
+
+<div id="app">
+
+<!-- ════════════════════════════════
+     VIEW: DASHBOARD
+════════════════════════════════ -->
+<div class="view active" id="view-dashboard">
+  <div class="header">
+    <div>
+      <div style="font-size:11px;opacity:.75">A2 Construction</div>
+      <h1>Dashboard</h1>
+    </div>
+    <button class="btn-icon" onclick="showSyncStatus()">&#x21BB;</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title">Today — <span id="todayLabel"></span></p>
+    <div class="stat-grid">
+      <div class="stat-card green"><div class="stat-num" id="statPresent">—</div><div class="stat-label">Present</div></div>
+      <div class="stat-card red"><div class="stat-num" id="statAbsent">—</div><div class="stat-label">Absent</div></div>
+      <div class="stat-card orange"><div class="stat-num" id="statOT">—</div><div class="stat-label">OT Requests</div></div>
+      <div class="stat-card"><div class="stat-num" id="statCA">—</div><div class="stat-label">Cash Advances</div></div>
+    </div>
+    <p class="section-title">Employees</p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num" id="statActive">—</div><div class="stat-label">Active</div></div>
+      <div class="stat-card red"><div class="stat-num" id="statResigned">—</div><div class="stat-label">Resigned</div></div>
+    </div>
+    <p class="section-title">Quick Actions</p>
+    <div class="list-card">
+      <div class="list-item" onclick="switchView('attendance')">
+        <div class="avatar" style="background:#2E7D32">✓</div>
+        <div class="item-info"><div class="item-name">Mark Attendance</div><div class="item-sub">Today's attendance sheet</div></div>
+        <span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('overtime')">
+        <div class="avatar" style="background:#FF6F00">⏱</div>
+        <div class="item-info"><div class="item-name">File Overtime</div><div class="item-sub">OT request form</div></div>
+        <span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('cash-advance')">
+        <div class="avatar" style="background:#6A1B9A">₱</div>
+        <div class="item-info"><div class="item-name">Cash Advance</div><div class="item-sub">Request cash advance</div></div>
+        <span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('leave')">
+        <div class="avatar" style="background:#C62828">🏖</div>
+        <div class="item-info"><div class="item-name">File Leave</div><div class="item-sub">Leave application</div></div>
+        <span>›</span>
+      </div>
+    </div>
+    <p class="section-title">Recent Activity</p>
+    <div id="recentActivity" class="list-card">
+      <div class="empty"><div class="empty-icon">📋</div><p>Loading…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: EMPLOYEES
+════════════════════════════════ -->
+<div class="view" id="view-employees">
+  <div class="header">
+    <h1>Employees</h1>
+    <button class="btn-icon" onclick="openEmployeeDrawer()">+</button>
+  </div>
+  <div style="padding:10px 12px 0;flex-shrink:0">
+    <div class="search-bar">
+      <input class="search-input" id="empSearch" placeholder="Search name, position…" oninput="filterEmployees()"/>
+      <button class="btn-filter" onclick="toggleEmpFilter()">⚙</button>
+    </div>
+    <div id="empFilterBar" style="display:none;margin-bottom:8px">
+      <select class="form-control" id="empStatusFilter" onchange="filterEmployees()" style="font-size:13px">
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Resigned">Resigned</option>
+        <option value="On Leave">On Leave</option>
+      </select>
+    </div>
+  </div>
+  <div class="scroll" style="padding-top:0">
+    <p class="section-title" id="empCount">Loading employees…</p>
+    <div id="empList" class="list-card">
+      <div class="empty"><div class="empty-icon">👷</div><p>Loading…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: ATTENDANCE
+════════════════════════════════ -->
+<div class="view" id="view-attendance">
+  <div class="header">
+    <h1>Attendance</h1>
+    <button class="btn-icon" id="attDateBtn" onclick="showDatePicker()">📅</button>
+  </div>
+  <div style="padding:10px 12px;flex-shrink:0">
+    <div class="search-bar">
+      <input class="search-input" id="attSearch" placeholder="Search employee…" oninput="filterAttendance()"/>
+      <select class="form-control" id="attAreaFilter" onchange="filterAttendance()" style="flex:0 0 110px;font-size:13px">
+        <option value="">All Areas</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px" id="attLegend">
+      <span class="chip chip-green">✓ Present</span>
+      <span class="chip chip-red">✗ Absent</span>
+      <span class="chip chip-orange">½ Half</span>
+      <span class="chip" style="background:#FFF3E0;color:#FF6F00">OT</span>
+      <span class="chip" style="background:#F3E5F5;color:#AB47BC">🎉 Holiday</span>
+    </div>
+  </div>
+  <div class="scroll" style="padding-top:0">
+    <p class="section-title" id="attDateLabel">Today</p>
+    <div id="attList" class="list-card">
+      <div class="empty"><div class="empty-icon">📋</div><p>Loading attendance…</p></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="saveAttendance()">💾 Save Attendance</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: PAYROLL
+════════════════════════════════ -->
+<div class="view" id="view-payroll">
+  <div class="header">
+    <h1>Payroll</h1>
+    <button class="btn-icon" onclick="generatePayroll()">⚙</button>
+  </div>
+  <div style="padding:10px 12px;flex-shrink:0">
+    <div class="form-row">
+      <div>
+        <label>Period From</label>
+        <input type="date" class="form-control" id="payFrom" style="font-size:13px"/>
+      </div>
+      <div>
+        <label>Period To</label>
+        <input type="date" class="form-control" id="payTo" style="font-size:13px"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Area / Location</label>
+      <select class="form-control" id="payArea" style="font-size:13px">
+        <option value="">All Areas</option>
+      </select>
+    </div>
+  </div>
+  <div class="scroll" style="padding-top:0">
+    <div id="payrollContainer">
+      <div class="empty"><div class="empty-icon">💰</div><p>Set period and generate payroll</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     VIEW: MORE (forms hub)
+════════════════════════════════ -->
+<div class="view" id="view-more">
+  <div class="header"><h1>More</h1></div>
+  <div class="scroll">
+    <p class="section-title">Forms</p>
+    <div class="list-card">
+      <div class="list-item" onclick="switchView('cash-advance')">
+        <div class="avatar" style="background:#6A1B9A">₱</div>
+        <div class="item-info"><div class="item-name">Cash Advance</div><div class="item-sub">CA requests</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('overtime')">
+        <div class="avatar" style="background:#FF6F00">⏱</div>
+        <div class="item-info"><div class="item-name">Overtime (OT)</div><div class="item-sub">OT requests</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('leave')">
+        <div class="avatar" style="background:#C62828">🏖</div>
+        <div class="item-info"><div class="item-name">Leave / AWOL</div><div class="item-sub">Leave applications</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('vale')">
+        <div class="avatar" style="background:#1565C0">📄</div>
+        <div class="item-info"><div class="item-name">Vale / Voucher</div><div class="item-sub">Vale transactions</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('morning-meeting')">
+        <div class="avatar" style="background:#2E7D32">☀</div>
+        <div class="item-info"><div class="item-name">Morning Meeting</div><div class="item-sub">Daily meeting log</div></div><span>›</span>
+      </div>
+    </div>
+    <p class="section-title">Settings</p>
+    <div class="list-card">
+      <div class="list-item" onclick="switchView('locations')">
+        <div class="avatar" style="background:#455A64">📍</div>
+        <div class="item-info"><div class="item-name">Locations / Areas</div><div class="item-sub">Manage work sites</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="switchView('customers')">
+        <div class="avatar" style="background:#455A64">🏢</div>
+        <div class="item-info"><div class="item-name">Customers / Projects</div><div class="item-sub">Project list</div></div><span>›</span>
+      </div>
+      <div class="list-item" onclick="openSyncDrawer()">
+        <div class="avatar" style="background:#0288D1">🔄</div>
+        <div class="item-info"><div class="item-name">Google Sheets Sync</div><div class="item-sub">Sync status & manual sync</div></div><span>›</span>
+      </div>
+    </div>
+    <p class="section-title">App Info</p>
+    <div class="list-card">
+      <div class="list-item">
+        <div class="item-info">
+          <div class="item-name">A2 Construction Payroll v2</div>
+          <div class="item-sub">Migrated from AppSheet · Supabase backend</div>
+        </div>
+      </div>
+      <div class="list-item" id="syncStatus">
+        <div class="item-info">
+          <div class="item-name">Last Sync</div>
+          <div class="item-sub" id="lastSyncTime">Never</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SUB-VIEWS (Cash Advance, OT, Leave, Vale, Morning Meeting)
+     These share a common container
+════════════════════════════════ -->
+<div class="view" id="view-cash-advance">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Cash Advance</h1>
+    <button class="btn-icon" onclick="openCADrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title" id="caCount">Cash Advance Requests</p>
+    <div id="caList" class="list-card"><div class="empty"><div class="empty-icon">₱</div><p>No requests yet</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-overtime">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Overtime (OT)</h1>
+    <button class="btn-icon" onclick="openOTDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title" id="otCount">OT Requests</p>
+    <div id="otList" class="list-card"><div class="empty"><div class="empty-icon">⏱</div><p>No OT requests yet</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-leave">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Leave / AWOL</h1>
+    <button class="btn-icon" onclick="openLeaveDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title" id="leaveCount">Leave Applications</p>
+    <div id="leaveList" class="list-card"><div class="empty"><div class="empty-icon">🏖</div><p>No leave filed yet</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-vale">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Vale / Voucher</h1>
+    <button class="btn-icon" onclick="openValeDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title" id="valeCount">Vale Transactions</p>
+    <div id="valeList" class="list-card"><div class="empty"><div class="empty-icon">📄</div><p>No vale records yet</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-morning-meeting">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Morning Meeting</h1>
+    <button class="btn-icon" onclick="openMeetingDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <p class="section-title" id="meetingCount">Meeting Logs</p>
+    <div id="meetingList" class="list-card"><div class="empty"><div class="empty-icon">☀</div><p>No meeting logs</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-locations">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Locations</h1>
+    <button class="btn-icon" onclick="openLocationDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <div id="locationList" class="list-card"><div class="empty"><div class="empty-icon">📍</div><p>No locations</p></div></div>
+  </div>
+</div>
+
+<div class="view" id="view-customers">
+  <div class="header">
+    <button class="btn-icon" onclick="goBack()">‹</button>
+    <h1>Customers / Projects</h1>
+    <button class="btn-icon" onclick="openCustomerDrawer()">+</button>
+  </div>
+  <div class="scroll">
+    <div id="customerList" class="list-card"><div class="empty"><div class="empty-icon">🏢</div><p>No customers</p></div></div>
+  </div>
+</div>
+
+</div><!-- end #app -->
+
+<!-- ════════════════════════════════
+     BOTTOM NAVIGATION
+════════════════════════════════ -->
+<div id="nav">
+  <button class="nav-item active" id="nav-dashboard" onclick="switchView('dashboard')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-item" id="nav-employees" onclick="switchView('employees')">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><path d="M19 8l2 2 4-4" stroke-width="2"/></svg>
+    Employees
+  </button>
+  <button class="nav-item" id="nav-attendance" onclick="switchView('attendance')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+    Attendance
+  </button>
+  <button class="nav-item" id="nav-payroll" onclick="switchView('payroll')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h.01M10 15h3"/></svg>
+    Payroll
+  </button>
+  <button class="nav-item" id="nav-more" onclick="switchView('more')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+    More
+  </button>
+</div>
+
+<!-- ════════════════════════════════
+     OVERLAYS & DRAWERS
+════════════════════════════════ -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<!-- Employee Drawer -->
+<div class="drawer" id="empDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title" id="empDrawerTitle">Add Employee</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <input type="hidden" id="empId"/>
+    <div class="form-row">
+      <div class="form-group"><label>First Name *</label><input class="form-control" id="empFirstName" placeholder="e.g. Juan"/></div>
+      <div class="form-group"><label>Last Name *</label><input class="form-control" id="empLastName" placeholder="e.g. Dela Cruz"/></div>
+    </div>
+    <div class="form-group"><label>Nickname / Alias</label><input class="form-control" id="empNickname" placeholder="Alias"/></div>
+    <div class="form-group"><label>Position *</label>
+      <select class="form-control" id="empPosition">
+        <option value="">— Select —</option>
+        <option>Mason</option><option>Carpenter</option><option>Laborer</option>
+        <option>Electrician</option><option>Plumber</option><option>Painter</option>
+        <option>Landscaper</option><option>Foreman</option><option>Engineer</option>
+        <option>Helper</option><option>Driver</option><option>Security</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Pay per Day (₱) *</label><input type="number" class="form-control" id="empPay" placeholder="600"/></div>
+      <div class="form-group"><label>Location / Area</label><select class="form-control" id="empLocation"><option value="">— Select —</option></select></div>
+    </div>
+    <div class="form-group"><label>Address</label><input class="form-control" id="empAddress" placeholder="Home address"/></div>
+    <div class="form-group"><label>Contact Number</label><input class="form-control" id="empContact" placeholder="09XXXXXXXXX"/></div>
+    <div class="form-group"><label>Birthday</label><input type="date" class="form-control" id="empBirthday"/></div>
+    <div class="form-group"><label>Employee Status</label>
+      <select class="form-control" id="empEmpStatus">
+        <option>Regular</option><option>Project-based</option><option>Casual</option><option>Probationary</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="empStatus">
+        <option>Active</option><option>Resigned</option><option>On Leave</option><option>Terminated</option>
+      </select>
+    </div>
+    <p class="section-title">Government IDs</p>
+    <div class="form-row">
+      <div class="form-group"><label>SSS No.</label><input class="form-control" id="empSSS" placeholder="XX-XXXXXXX-X"/></div>
+      <div class="form-group"><label>PhilHealth No.</label><input class="form-control" id="empPhilhealth" placeholder="XX-XXXXXXXXX-X"/></div>
+    </div>
+    <div class="form-group"><label>Pag-IBIG No.</label><input class="form-control" id="empPagibig" placeholder="XXXX-XXXX-XXXX"/></div>
+    <p class="section-title">Pay Increases</p>
+    <div class="form-row">
+      <div class="form-group"><label>1st Increase ₱</label><input type="number" class="form-control" id="emp1stPay"/></div>
+      <div class="form-group"><label>Effectivity</label><input type="date" class="form-control" id="emp1stDate"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>2nd Increase ₱</label><input type="number" class="form-control" id="emp2ndPay"/></div>
+      <div class="form-group"><label>Effectivity</label><input type="date" class="form-control" id="emp2ndDate"/></div>
+    </div>
+    <div class="form-group"><label>Referred by</label><input class="form-control" id="empReferral" placeholder="Name of referrer"/></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cash Advance Drawer -->
+<div class="drawer" id="caDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Cash Advance Request</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Employee *</label><select class="form-control" id="caEmployee"><option value="">— Select Employee —</option></select></div>
+    <div class="form-group"><label>Request Date *</label><input type="date" class="form-control" id="caDate"/></div>
+    <div class="form-group"><label>Amount (₱) *</label><input type="number" class="form-control" id="caAmount" placeholder="1000"/></div>
+    <div class="form-group"><label>Purpose / Reason</label><textarea class="form-control" id="caPurpose" rows="2" placeholder="Purpose of cash advance…"></textarea></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="caStatus">
+        <option>Pending</option><option>Approved</option><option>Released</option><option>Deducted</option>
+      </select>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCA()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- OT Drawer -->
+<div class="drawer" id="otDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Overtime Request</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Employee *</label><select class="form-control" id="otEmployee"><option value="">— Select Employee —</option></select></div>
+    <div class="form-group"><label>OT Date *</label><input type="date" class="form-control" id="otDate"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>OT Hours</label><input type="number" class="form-control" id="otHours" placeholder="2" step="0.5"/></div>
+      <div class="form-group"><label>OT Rate (x)</label><input type="number" class="form-control" id="otRate" value="1.25" step="0.25"/></div>
+    </div>
+    <div class="form-group"><label>Reason / Work Done</label><textarea class="form-control" id="otReason" rows="2" placeholder="Describe OT work…"></textarea></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="otStatus"><option>Pending</option><option>Approved</option><option>Paid</option></select>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOT()">Submit OT</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Drawer -->
+<div class="drawer" id="leaveDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Leave Application</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Employee *</label><select class="form-control" id="leaveEmployee"><option value="">— Select Employee —</option></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>From *</label><input type="date" class="form-control" id="leaveFrom"/></div>
+      <div class="form-group"><label>To *</label><input type="date" class="form-control" id="leaveTo"/></div>
+    </div>
+    <div class="form-group"><label>Leave Type</label>
+      <select class="form-control" id="leaveType">
+        <option>Sick Leave</option><option>Vacation Leave</option><option>Emergency</option>
+        <option>AWOL</option><option>Personal</option><option>Others</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Reason</label><textarea class="form-control" id="leaveReason" rows="2" placeholder="Reason for leave…"></textarea></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-control" id="leaveStatus"><option>Pending</option><option>Approved</option><option>Denied</option></select>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLeave()">Submit Leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vale Drawer -->
+<div class="drawer" id="valeDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Vale / Voucher</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Employee *</label><select class="form-control" id="valeEmployee"><option value="">— Select Employee —</option></select></div>
+    <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="valeDate"/></div>
+    <div class="form-group"><label>Amount (₱) *</label><input type="number" class="form-control" id="valeAmount" placeholder="500"/></div>
+    <div class="form-group"><label>Particulars / Purpose</label><textarea class="form-control" id="valePurpose" rows="2" placeholder="What for?"></textarea></div>
+    <div class="form-group"><label>Approved by</label><input class="form-control" id="valeApprover" placeholder="Supervisor name"/></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVale()">Save Vale</button>
+    </div>
+  </div>
+</div>
+
+<!-- Morning Meeting Drawer -->
+<div class="drawer" id="meetingDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Morning Meeting Log</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="meetDate"/></div>
+    <div class="form-group"><label>Location / Area</label><select class="form-control" id="meetLocation"><option value="">— Select —</option></select></div>
+    <div class="form-group"><label>Topic / Agenda</label><select class="form-control" id="meetTopic"><option value="">— Select —</option></select></div>
+    <div class="form-group"><label>Attendees (count)</label><input type="number" class="form-control" id="meetAttendees" placeholder="10"/></div>
+    <div class="form-group"><label>Notes / Discussion</label><textarea class="form-control" id="meetNotes" rows="3" placeholder="Key discussion points…"></textarea></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMeeting()">Save Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- Location Drawer -->
+<div class="drawer" id="locationDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Add Location</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Location Name *</label><input class="form-control" id="locName" placeholder="e.g. Laguna Site A"/></div>
+    <div class="form-group"><label>Address / Description</label><input class="form-control" id="locAddress" placeholder="Full address"/></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLocation()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Drawer -->
+<div class="drawer" id="customerDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Add Customer / Project</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Customer / Project Name *</label><input class="form-control" id="custName" placeholder="Customer or project name"/></div>
+    <div class="form-group"><label>Contact Person</label><input class="form-control" id="custContact" placeholder="Name"/></div>
+    <div class="form-group"><label>Contact Number</label><input class="form-control" id="custPhone" placeholder="09XXXXXXXXX"/></div>
+    <div class="form-group"><label>Location</label><input class="form-control" id="custLocation" placeholder="Project site"/></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Drawer -->
+<div class="drawer" id="syncDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">Google Sheets Sync</span>
+    <button class="btn-icon" style="color:var(--danger)" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-group"><label>Spreadsheet ID</label>
+      <input class="form-control" id="sheetsId" value="14kuNwYsNKVAOOVRpbBZjhjmugge3-vtJDiDfLncXKNA" placeholder="Google Sheets ID"/>
+    </div>
+    <div class="form-group"><label>Google Service Account Key (JSON)</label>
+      <textarea class="form-control" id="sheetsKey" rows="4" placeholder='{"type":"service_account","project_id":"..."}'></textarea>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">Paste your service account credentials. Store securely — see README for setup.</p>
+    </div>
+    <div class="form-group">
+      <label>Last Sync</label>
+      <div id="syncInfo" style="font-size:14px;color:var(--muted)">Never synced</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="syncFromSheets()">⬇ Pull from Sheets</button>
+      <button class="btn btn-primary" onclick="syncToSheets()">⬆ Push to Sheets</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">
+      For automatic sync, deploy the included Edge Function to Supabase.
+      See <code>supabase/functions/sheets-sync/index.ts</code> in the repo.
+    </p>
+  </div>
+</div>
+
+<!-- Attendance Status Picker -->
+<div class="overlay" id="attPickerOverlay" onclick="closeAttPicker()"></div>
+<div class="drawer" id="attPickerDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title" id="attPickerName">Mark Attendance</span>
+  </div>
+  <div class="drawer-body" id="attPickerBody">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn" style="background:#E8F5E9;color:var(--success);border:2px solid var(--success)" onclick="setAtt('present')">✓ Present</button>
+      <button class="btn" style="background:#FFEBEE;color:var(--danger);border:2px solid var(--danger)" onclick="setAtt('absent')">✗ Absent</button>
+      <button class="btn" style="background:#FFF8E1;color:var(--warning);border:2px solid var(--warning)" onclick="setAtt('half')">½ Half Day</button>
+      <button class="btn" style="background:#FFF3E0;color:var(--accent);border:2px solid var(--accent)" onclick="setAtt('ot')">⏱ OT</button>
+      <button class="btn" style="background:#F3E5F5;color:#AB47BC;border:2px solid #AB47BC" onclick="setAtt('holiday')">🎉 Holiday</button>
+      <button class="btn btn-outline" onclick="closeAttPicker()">Cancel</button>
+    </div>
+    <div style="margin-top:14px">
+      <label>Time In</label>
+      <input type="time" class="form-control" id="attTimeIn" style="margin-bottom:8px"/>
+      <label>Time Out</label>
+      <input type="time" class="form-control" id="attTimeOut"/>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════ -->
+<script>
+// ══════════════════════════════════
+// CONFIG — replace with your values
+// ══════════════════════════════════
+const CONFIG = {
+  supabaseUrl:  localStorage.getItem('sb_url')  || 'https://caugvcpfmkfagfwjpijg.supabase.co',
+  supabaseKey:  localStorage.getItem('sb_key')  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhdWd2Y3BmbWtmYWdmd2pwaWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0NTQyMDcsImV4cCI6MjEwMDAzMDIwN30.FBo6YEtd-_LxBuA_JsKJpMSzRSmupL-E17sSJHS9tj0',
+  sheetsId:     '14kuNwYsNKVAOOVRpbBZjhjmugge3-vtJDiDfLncXKNA',
+};
+
+// ══════════════════════════════════
+// STATE
+// ══════════════════════════════════
+let state = {
+  employees: [], attendance: {}, cashAdvances: [], overtimes: [],
+  leaves: [], vales: [], meetings: [], locations: [], customers: [],
+  currentAttDate: new Date().toISOString().slice(0,10),
+  currentEmpId: null, currentView: 'dashboard',
+  prevView: 'dashboard',
+};
+
+// ══════════════════════════════════
+// SUPABASE MINI-CLIENT
+// ══════════════════════════════════
+const sb = {
+  async req(method, path, body){
+    const url = CONFIG.supabaseUrl + '/rest/v1/' + path;
+    const opts = {
+      method, headers:{
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+      }
+    };
+    if(body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    if(!r.ok){ const e = await r.text(); throw new Error(e); }
+    if(r.status === 204) return null;
+    return r.json();
+  },
+  get: (t, q='') => sb.req('GET', t + '?order=created_at.desc&limit=500' + (q?'&'+q:''), null),
+  post: (t, d) => sb.req('POST', t, d),
+  patch: (t, id, d) => sb.req('PATCH', t+'?id=eq.'+id, d),
+  del: (t, id) => sb.req('DELETE', t+'?id=eq.'+id, null),
+};
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('todayLabel').textContent =
+    new Date().toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric'});
+  setDefaultDates();
+  await checkConnection();
+  await loadAll();
+});
+
+function setDefaultDates(){
+  const today = new Date().toISOString().slice(0,10);
+  ['caDate','otDate','leaveFrom','leaveTo','valeDate','meetDate'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = today;
+  });
+  // Payroll period: current month
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  document.getElementById('payFrom').value = new Date(y,m,1).toISOString().slice(0,10);
+  document.getElementById('payTo').value = new Date(y,m+1,0).toISOString().slice(0,10);
+  state.currentAttDate = today;
+  document.getElementById('attDateLabel').textContent =
+    'Attendance — ' + new Date().toLocaleDateString('en-PH',{weekday:'long',month:'short',day:'numeric'});
+}
+
+async function checkConnection(){
+  try{
+    await sb.get('a2_employees','limit=1');
+    setConn(true,'Connected to Supabase');
+  }catch(e){
+    setConn(false,'Offline — using local data');
+  }
+}
+
+function setConn(ok, msg){
+  document.getElementById('connDot').className = 'conn-dot' + (ok?'':' offline');
+  document.getElementById('connText').textContent = msg;
+}
+
+async function loadAll(){
+  try{
+    const [emps, att, ca, ot, lv, vl, mt, loc, cust] = await Promise.allSettled([
+      sb.get('a2_employees'),
+      sb.get('a2_attendance', 'att_date=eq.'+state.currentAttDate),
+      sb.get('a2_cash_advances'),
+      sb.get('a2_overtime_requests'),
+      sb.get('a2_leaves'),
+      sb.get('a2_vales'),
+      sb.get('a2_morning_meetings'),
+      sb.get('a2_locations'),
+      sb.get('a2_customers'),
+    ]);
+
+    if(emps.status==='fulfilled' && emps.value) state.employees = emps.value;
+    if(att.status==='fulfilled' && att.value){
+      state.attendance = {};
+      att.value.forEach(r => state.attendance[r.employee_id] = r);
+    }
+    if(ca.status==='fulfilled' && ca.value) state.cashAdvances = ca.value;
+    if(ot.status==='fulfilled' && ot.value) state.overtimes = ot.value;
+    if(lv.status==='fulfilled' && lv.value) state.leaves = lv.value;
+    if(vl.status==='fulfilled' && vl.value) state.vales = vl.value;
+    if(mt.status==='fulfilled' && mt.value) state.meetings = mt.value;
+    if(loc.status==='fulfilled' && loc.value) state.locations = loc.value;
+    if(cust.status==='fulfilled' && cust.value) state.customers = cust.value;
+
+  }catch(e){ console.warn('Load error', e); }
+
+  // Use demo data if empty
+  if(!state.employees.length) loadDemoData();
+
+  renderAll();
+}
+
+// ══════════════════════════════════
+// DEMO / SEED DATA
+// ══════════════════════════════════
+function loadDemoData(){
+  state.employees = [
+    {id:'c55b9599',key_id:'C001',first_name:'Danny',last_name:'Abaño',nickname:'Danny A',
+     position:'Mason',location:'Laguna',area:'Laguna',pay_per_day:600,status:'Resigned',employee_status:'Regular'},
+    {id:'b18f64a8',key_id:'C002',first_name:'Noli',last_name:'Advincula',nickname:'Noli',
+     position:'Landscaper',location:'Laguna',area:'Laguna',pay_per_day:500,status:'Active',employee_status:'Regular'},
+    {id:'a1b2c3d4',key_id:'C003',first_name:'Jose',last_name:'Santos',nickname:'Jojo',
+     position:'Carpenter',location:'Laguna',area:'Laguna',pay_per_day:650,status:'Active',employee_status:'Project-based'},
+    {id:'e5f6g7h8',key_id:'C004',first_name:'Maria',last_name:'Cruz',nickname:'Marie',
+     position:'Foreman',location:'Laguna',area:'Laguna',pay_per_day:900,status:'Active',employee_status:'Regular'},
+  ];
+  state.locations = [{id:'l1',name:'Laguna',address:'Laguna Province'},{id:'l2',name:'Manila',address:'Metro Manila'}];
+  state.customers = [{id:'cu1',name:'ABC Developers',contact_person:'Mr. Juan',phone:'09171234567',location:'Laguna'}];
+}
+
+function renderAll(){
+  renderDashboard(); renderEmployees(); renderAttendance();
+  renderCA(); renderOT(); renderLeave(); renderVale(); renderMeetings();
+  renderLocations(); renderCustomers(); populateSelects();
+}
+
+// ══════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════
+const mainViews = ['dashboard','employees','attendance','payroll','more'];
+
+function switchView(name){
+  if(state.currentView !== name) state.prevView = state.currentView;
+  state.currentView = name;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById('view-'+name);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navKey = mainViews.includes(name) ? name : null;
+  if(navKey){
+    const nav = document.getElementById('nav-'+navKey);
+    if(nav) nav.classList.add('active');
+  }
+}
+
+function goBack(){
+  const prev = mainViews.includes(state.prevView) ? state.prevView : 'more';
+  switchView(prev);
+}
+
+// ══════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════
+function renderDashboard(){
+  const active = state.employees.filter(e => e.status==='Active' || !e.status).length;
+  const resigned = state.employees.filter(e => e.status==='Resigned').length;
+  const todayAtt = Object.values(state.attendance);
+  const present = todayAtt.filter(a => a.status==='present').length;
+  const absent = todayAtt.filter(a => a.status==='absent').length;
+  const today = new Date().toISOString().slice(0,10);
+  const caToday = state.cashAdvances.filter(c => c.created_at && c.created_at.slice(0,10)===today).length;
+  const otPending = state.overtimes.filter(o => o.status==='Pending').length;
+
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statResigned').textContent = resigned;
+  document.getElementById('statPresent').textContent = present || '—';
+  document.getElementById('statAbsent').textContent = absent || '—';
+  document.getElementById('statCA').textContent = caToday || '0';
+  document.getElementById('statOT').textContent = otPending || '0';
+
+  const recent = [...state.cashAdvances.slice(0,3), ...state.overtimes.slice(0,2)];
+  const recentEl = document.getElementById('recentActivity');
+  if(!recent.length){
+    recentEl.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No recent activity</p></div>';
+  } else {
+    recentEl.innerHTML = state.cashAdvances.slice(0,5).map(c =>
+      `<div class="list-item">
+        <div class="avatar" style="background:#6A1B9A;font-size:12px">₱</div>
+        <div class="item-info">
+          <div class="item-name">${empName(c.employee_id)} — CA</div>
+          <div class="item-sub">₱${fmt(c.amount)} · ${c.status||'Pending'}</div>
+        </div>
+        <span class="chip ${chipClass(c.status)}">${c.status||'Pending'}</span>
+      </div>`
+    ).join('');
+  }
+}
+
+// ══════════════════════════════════
+// EMPLOYEES
+// ══════════════════════════════════
+function renderEmployees(list){
+  const emps = list || state.employees;
+  const el = document.getElementById('empList');
+  document.getElementById('empCount').textContent =
+    emps.length + ' employee' + (emps.length!==1?'s':'');
+  if(!emps.length){
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👷</div><p>No employees found</p></div>';
+    return;
+  }
+  el.innerHTML = emps.map(e => {
+    const initials = ((e.first_name||'')[0]||'') + ((e.last_name||'')[0]||'');
+    const chip = e.status==='Active'||!e.status ? 'chip-green' :
+                 e.status==='Resigned' ? 'chip-red' : 'chip-orange';
+    return `<div class="list-item" onclick="openEmployeeDetail('${e.id}')">
+      <div class="avatar">${initials.toUpperCase()}</div>
+      <div class="item-info">
+        <div class="item-name">${e.first_name} ${e.last_name}</div>
+        <div class="item-sub">${e.position||'—'} · ${e.area||e.location||'—'}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-val">₱${fmt(e.pay_per_day||e.current_pay||0)}</div>
+        <span class="chip ${chip}">${e.status||'Active'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterEmployees(){
+  const q = document.getElementById('empSearch').value.toLowerCase();
+  const st = document.getElementById('empStatusFilter').value;
+  const filtered = state.employees.filter(e => {
+    const name = (e.first_name+' '+e.last_name+' '+(e.nickname||'')+' '+(e.position||'')).toLowerCase();
+    return (!q || name.includes(q)) && (!st || e.status===st);
+  });
+  renderEmployees(filtered);
+}
+
+function toggleEmpFilter(){
+  const bar = document.getElementById('empFilterBar');
+  bar.style.display = bar.style.display==='none' ? 'block' : 'none';
+}
+
+function openEmployeeDetail(id){
+  const emp = state.employees.find(e=>e.id===id);
+  if(!emp) return;
+  state.currentEmpId = id;
+  document.getElementById('empId').value = id;
+  document.getElementById('empFirstName').value = emp.first_name||'';
+  document.getElementById('empLastName').value = emp.last_name||'';
+  document.getElementById('empNickname').value = emp.nickname||'';
+  document.getElementById('empPosition').value = emp.position||'';
+  document.getElementById('empPay').value = emp.pay_per_day||emp.current_pay||'';
+  document.getElementById('empLocation').value = emp.area||emp.location||'';
+  document.getElementById('empAddress').value = emp.address||'';
+  document.getElementById('empContact').value = emp.contact_number||'';
+  document.getElementById('empBirthday').value = emp.birthday||'';
+  document.getElementById('empEmpStatus').value = emp.employee_status||'Regular';
+  document.getElementById('empStatus').value = emp.status||'Active';
+  document.getElementById('empSSS').value = emp.sss_no||'';
+  document.getElementById('empPhilhealth').value = emp.philhealth_no||'';
+  document.getElementById('empPagibig').value = emp.pagibig_no||'';
+  document.getElementById('emp1stPay').value = emp.increase_1_amount||'';
+  document.getElementById('emp1stDate').value = emp.increase_1_date||'';
+  document.getElementById('emp2ndPay').value = emp.increase_2_amount||'';
+  document.getElementById('emp2ndDate').value = emp.increase_2_date||'';
+  document.getElementById('empReferral').value = emp.referral_by||'';
+  document.getElementById('empDrawerTitle').textContent = 'Edit Employee';
+  openDrawer('empDrawer');
+}
+
+function openEmployeeDrawer(){
+  state.currentEmpId = null;
+  ['empId','empFirstName','empLastName','empNickname','empAddress','empContact',
+   'empSSS','empPhilhealth','empPagibig','emp1stPay','emp1stDate','emp2ndPay','emp2ndDate','empReferral','empBirthday']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('empDrawerTitle').textContent = 'Add Employee';
+  document.getElementById('empStatus').value = 'Active';
+  document.getElementById('empEmpStatus').value = 'Regular';
+  openDrawer('empDrawer');
+}
+
+async function saveEmployee(){
+  const data = {
+    first_name: v('empFirstName'), last_name: v('empLastName'), nickname: v('empNickname'),
+    position: v('empPosition'), pay_per_day: parseFloat(v('empPay'))||0,
+    area: v('empLocation'), location: v('empLocation'), address: v('empAddress'),
+    contact_number: v('empContact'), birthday: v('empBirthday'),
+    employee_status: v('empEmpStatus'), status: v('empStatus'),
+    sss_no: v('empSSS'), philhealth_no: v('empPhilhealth'), pagibig_no: v('empPagibig'),
+    referral_by: v('empReferral'),
+    increase_1_amount: parseFloat(v('emp1stPay'))||null, increase_1_date: v('emp1stDate')||null,
+    increase_2_amount: parseFloat(v('emp2ndPay'))||null, increase_2_date: v('emp2ndDate')||null,
+    full_name: v('empFirstName')+' '+v('empLastName'),
+    updated_at: new Date().toISOString(),
+  };
+  if(!data.first_name || !data.last_name){ toast('First and last name required'); return; }
+  try{
+    const id = state.currentEmpId;
+    if(id){
+      await sb.patch('a2_employees', id, data);
+      const idx = state.employees.findIndex(e=>e.id===id);
+      if(idx>=0) state.employees[idx] = {...state.employees[idx], ...data};
+    } else {
+      data.id = uid(); data.key_id = 'C'+Date.now().toString(36).toUpperCase();
+      data.created_at = new Date().toISOString();
+      await sb.post('a2_employees', data);
+      state.employees.unshift(data);
+    }
+    toast('✓ Employee saved');
+    closeDrawer(); renderEmployees(); renderDashboard(); populateSelects();
+    syncQueueAdd('employees', data);
+  }catch(e){ toast('Error: '+e.message.slice(0,50)); fallbackSave('employees', data); }
+}
+
+// ══════════════════════════════════
+// ATTENDANCE
+// ══════════════════════════════════
+function renderAttendance(emps){
+  const list = emps || state.employees.filter(e => e.status==='Active' || !e.status);
+  const el = document.getElementById('attList');
+  if(!list.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No active employees</p></div>'; return; }
+  el.innerHTML = list.map(e => {
+    const att = state.attendance[e.id] || {};
+    const s = att.status || 'none';
+    const colorMap = {present:'var(--success)',absent:'var(--danger)',half:'var(--warning)',ot:'var(--accent)',holiday:'#AB47BC',none:'var(--border)'};
+    const labelMap = {present:'✓ Present',absent:'✗ Absent',half:'½ Half',ot:'⏱ OT',holiday:'🎉 Holiday',none:'—'};
+    const initials = ((e.first_name||'')[0]||'')+((e.last_name||'')[0]||'');
+    return `<div class="list-item" onclick="openAttPicker('${e.id}')">
+      <div class="avatar">${initials.toUpperCase()}</div>
+      <div class="item-info">
+        <div class="item-name">${e.first_name} ${e.last_name}</div>
+        <div class="item-sub">${e.position||'—'} · ₱${fmt(e.pay_per_day||0)}/day</div>
+      </div>
+      <div style="background:${colorMap[s]};color:${s==='none'?'var(--muted)':'#fff'};
+          padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">
+        ${labelMap[s]}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterAttendance(){
+  const q = document.getElementById('attSearch').value.toLowerCase();
+  const area = document.getElementById('attAreaFilter').value;
+  const filtered = state.employees.filter(e => {
+    if(e.status==='Resigned') return false;
+    const name = (e.first_name+' '+e.last_name+' '+(e.nickname||'')).toLowerCase();
+    return (!q||name.includes(q)) && (!area||e.area===area||e.location===area);
+  });
+  renderAttendance(filtered);
+}
+
+let attPickerEmpId = null;
+function openAttPicker(empId){
+  attPickerEmpId = empId;
+  const emp = state.employees.find(e=>e.id===empId);
+  document.getElementById('attPickerName').textContent = emp ? emp.first_name+' '+emp.last_name : 'Mark Attendance';
+  const att = state.attendance[empId]||{};
+  document.getElementById('attTimeIn').value = att.time_in||'07:00';
+  document.getElementById('attTimeOut').value = att.time_out||'17:00';
+  document.getElementById('attPickerOverlay').classList.add('open');
+  document.getElementById('attPickerDrawer').classList.add('open');
+}
+function closeAttPicker(){
+  document.getElementById('attPickerOverlay').classList.remove('open');
+  document.getElementById('attPickerDrawer').classList.remove('open');
+}
+function setAtt(status){
+  const timeIn = document.getElementById('attTimeIn').value;
+  const timeOut = document.getElementById('attTimeOut').value;
+  state.attendance[attPickerEmpId] = {
+    ...state.attendance[attPickerEmpId],
+    employee_id: attPickerEmpId, att_date: state.currentAttDate,
+    status, time_in: timeIn, time_out: timeOut,
+  };
+  closeAttPicker(); renderAttendance();
+}
+
+async function saveAttendance(){
+  const records = Object.values(state.attendance);
+  if(!records.length){ toast('No attendance marked'); return; }
+  try{
+    for(const rec of records){
+      if(!rec.id){
+        rec.id = uid(); rec.created_at = new Date().toISOString();
+        await sb.post('a2_attendance', rec);
+      } else {
+        await sb.patch('a2_attendance', rec.id, rec);
+      }
+    }
+    toast('✓ Attendance saved ('+records.length+' records)');
+    syncQueueAdd('attendance', records);
+  }catch(e){ toast('Saved locally — will sync later'); fallbackSave('attendance', records); }
+}
+
+// ══════════════════════════════════
+// PAYROLL GENERATION
+// ══════════════════════════════════
+async function generatePayroll(){
+  const from = document.getElementById('payFrom').value;
+  const to   = document.getElementById('payTo').value;
+  if(!from||!to){ toast('Set period dates'); return; }
+
+  // Get attendance for period
+  let attData = [];
+  try{
+    const days = dateDiff(from,to)+1;
+    attData = await sb.get('a2_attendance',`att_date=gte.${from}&att_date=lte.${to}`)||[];
+  }catch(e){ attData = Object.values(state.attendance); }
+
+  const area = document.getElementById('payArea').value;
+  const emps = state.employees.filter(e =>
+    (e.status==='Active'||!e.status) && (!area||e.area===area||e.location===area)
+  );
+
+  const payrollData = emps.map(emp => {
+    const empAtt = attData.filter(a => a.employee_id===emp.id);
+    const present = empAtt.filter(a=>a.status==='present').length;
+    const half    = empAtt.filter(a=>a.status==='half').length;
+    const otDays  = empAtt.filter(a=>a.status==='ot').length;
+    const otAmount = otDays * (emp.pay_per_day||0) * 0.25;
+    const daysWorked = present + (half*0.5) + otDays;
+    const basicPay = daysWorked * (emp.pay_per_day||0);
+    const caDeduction = state.cashAdvances.filter(c=>c.employee_id===emp.id&&c.status==='Approved').reduce((s,c)=>s+(c.amount||0),0);
+    const netPay = basicPay + otAmount - caDeduction;
+    return {emp, daysWorked, basicPay, otAmount, caDeduction, netPay};
+  });
+
+  const container = document.getElementById('payrollContainer');
+  if(!payrollData.length){
+    container.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p>No employees found for period</p></div>';
+    return;
+  }
+
+  const total = payrollData.reduce((s,r)=>s+r.netPay,0);
+  container.innerHTML = `
+    <p class="section-title">Period: ${from} to ${to}</p>
+    <div class="list-card" style="overflow-x:auto">
+      <table class="payroll-table">
+        <thead><tr>
+          <th>Employee</th><th>Days</th><th>Basic Pay</th><th>OT</th><th>CA Deduct</th><th>Net Pay</th>
+        </tr></thead>
+        <tbody>
+          ${payrollData.map(r=>`<tr>
+            <td><strong>${r.emp.first_name} ${r.emp.last_name}</strong><br><small>${r.emp.position||'—'}</small></td>
+            <td>${r.daysWorked.toFixed(1)}</td>
+            <td>₱${fmt(r.basicPay)}</td>
+            <td>₱${fmt(r.otAmount)}</td>
+            <td style="color:var(--danger)">-₱${fmt(r.caDeduction)}</td>
+            <td><strong>₱${fmt(r.netPay)}</strong></td>
+          </tr>`).join('')}
+          <tr class="total-row">
+            <td colspan="5"><strong>TOTAL</strong></td>
+            <td><strong>₱${fmt(total)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="printPayroll()">🖨 Print Payroll</button>
+  `;
+}
+
+function printPayroll(){ window.print(); }
+
+// ══════════════════════════════════
+// CASH ADVANCE
+// ══════════════════════════════════
+function renderCA(){
+  const el = document.getElementById('caList');
+  document.getElementById('caCount').textContent = state.cashAdvances.length + ' Cash Advance Requests';
+  if(!state.cashAdvances.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">₱</div><p>No requests yet</p></div>'; return; }
+  el.innerHTML = state.cashAdvances.map(c=>`
+    <div class="list-item">
+      <div class="avatar" style="background:#6A1B9A;font-size:12px">₱</div>
+      <div class="item-info">
+        <div class="item-name">${empName(c.employee_id)}</div>
+        <div class="item-sub">${c.request_date||c.created_at?.slice(0,10)||'—'} · ${c.purpose||'—'}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-val">₱${fmt(c.amount)}</div>
+        <span class="chip ${chipClass(c.status)}">${c.status||'Pending'}</span>
+      </div>
+    </div>`).join('');
+}
+
+async function saveCA(){
+  const empId = v('caEmployee'); if(!empId){ toast('Select employee'); return; }
+  const data = {
+    id: uid(), employee_id: empId, request_date: v('caDate'),
+    amount: parseFloat(v('caAmount'))||0, purpose: v('caPurpose'),
+    status: v('caStatus'), created_at: new Date().toISOString(),
+  };
+  try{ await sb.post('a2_cash_advances', data); }catch(e){ fallbackSave('cash_advances', data); }
+  state.cashAdvances.unshift(data);
+  toast('✓ CA request submitted'); closeDrawer(); renderCA(); renderDashboard();
+  syncQueueAdd('cash_advances', data);
+}
+
+// ══════════════════════════════════
+// OVERTIME
+// ══════════════════════════════════
+function renderOT(){
+  const el = document.getElementById('otList');
+  document.getElementById('otCount').textContent = state.overtimes.length + ' OT Requests';
+  if(!state.overtimes.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">⏱</div><p>No OT requests</p></div>'; return; }
+  el.innerHTML = state.overtimes.map(o=>`
+    <div class="list-item">
+      <div class="avatar" style="background:var(--accent)">⏱</div>
+      <div class="item-info">
+        <div class="item-name">${empName(o.employee_id)}</div>
+        <div class="item-sub">${o.ot_date||o.created_at?.slice(0,10)||'—'} · ${o.ot_hours||0}h × ${o.ot_rate||1.25}x</div>
+      </div>
+      <div class="item-right">
+        <div class="item-val">₱${fmt((o.ot_hours||0)*(o.ot_rate||1.25)*(empPay(o.employee_id)/8))}</div>
+        <span class="chip ${chipClass(o.status)}">${o.status||'Pending'}</span>
+      </div>
+    </div>`).join('');
+}
+
+async function saveOT(){
+  const empId = v('otEmployee'); if(!empId){ toast('Select employee'); return; }
+  const data = {
+    id: uid(), employee_id: empId, ot_date: v('otDate'),
+    ot_hours: parseFloat(v('otHours'))||0, ot_rate: parseFloat(v('otRate'))||1.25,
+    reason: v('otReason'), status: v('otStatus'), created_at: new Date().toISOString(),
+  };
+  try{ await sb.post('a2_overtime_requests', data); }catch(e){ fallbackSave('overtime_requests', data); }
+  state.overtimes.unshift(data);
+  toast('✓ OT request submitted'); closeDrawer(); renderOT(); renderDashboard();
+  syncQueueAdd('overtime_requests', data);
+}
+
+// ══════════════════════════════════
+// LEAVE
+// ══════════════════════════════════
+function renderLeave(){
+  const el = document.getElementById('leaveList');
+  document.getElementById('leaveCount').textContent = state.leaves.length + ' Leave Applications';
+  if(!state.leaves.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">🏖</div><p>No leave applications</p></div>'; return; }
+  el.innerHTML = state.leaves.map(l=>`
+    <div class="list-item">
+      <div class="avatar" style="background:var(--danger)">🏖</div>
+      <div class="item-info">
+        <div class="item-name">${empName(l.employee_id)}</div>
+        <div class="item-sub">${l.leave_from||'—'} to ${l.leave_to||'—'} · ${l.leave_type||'—'}</div>
+      </div>
+      <div class="item-right">
+        <span class="chip ${chipClass(l.status)}">${l.status||'Pending'}</span>
+      </div>
+    </div>`).join('');
+}
+
+async function saveLeave(){
+  const empId = v('leaveEmployee'); if(!empId){ toast('Select employee'); return; }
+  const data = {
+    id: uid(), employee_id: empId, leave_from: v('leaveFrom'), leave_to: v('leaveTo'),
+    leave_type: v('leaveType'), reason: v('leaveReason'),
+    status: v('leaveStatus'), created_at: new Date().toISOString(),
+  };
+  try{ await sb.post('a2_leaves', data); }catch(e){ fallbackSave('leaves', data); }
+  state.leaves.unshift(data);
+  toast('✓ Leave application submitted'); closeDrawer(); renderLeave();
+  syncQueueAdd('leaves', data);
+}
+
+// ══════════════════════════════════
+// VALE / VOUCHER
+// ══════════════════════════════════
+function renderVale(){
+  const el = document.getElementById('valeList');
+  document.getElementById('valeCount').textContent = state.vales.length + ' Vale Transactions';
+  if(!state.vales.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><p>No vale records</p></div>'; return; }
+  el.innerHTML = state.vales.map(v2=>`
+    <div class="list-item">
+      <div class="avatar" style="background:var(--primary)">📄</div>
+      <div class="item-info">
+        <div class="item-name">${empName(v2.employee_id)}</div>
+        <div class="item-sub">${v2.vale_date||v2.created_at?.slice(0,10)||'—'} · ${v2.purpose||'—'}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-val">₱${fmt(v2.amount)}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function saveVale(){
+  const empId = v('valeEmployee'); if(!empId){ toast('Select employee'); return; }
+  const data = {
+    id: uid(), employee_id: empId, vale_date: v('valeDate'),
+    amount: parseFloat(v('valeAmount'))||0, purpose: v('valePurpose'),
+    approved_by: v('valeApprover'), created_at: new Date().toISOString(),
+  };
+  try{ await sb.post('a2_vales', data); }catch(e){ fallbackSave('vales', data); }
+  state.vales.unshift(data);
+  toast('✓ Vale saved'); closeDrawer(); renderVale();
+  syncQueueAdd('vales', data);
+}
+
+// ══════════════════════════════════
+// MORNING MEETING
+// ══════════════════════════════════
+function renderMeetings(){
+  const el = document.getElementById('meetingList');
+  document.getElementById('meetingCount').textContent = state.meetings.length + ' Meeting Logs';
+  if(!state.meetings.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">☀</div><p>No meeting logs</p></div>'; return; }
+  el.innerHTML = state.meetings.map(m=>`
+    <div class="list-item">
+      <div class="avatar" style="background:var(--success)">☀</div>
+      <div class="item-info">
+        <div class="item-name">${m.meet_date||m.created_at?.slice(0,10)||'—'} · ${m.location_name||'—'}</div>
+        <div class="item-sub">${m.topic||'—'} · ${m.attendees_count||0} attendees</div>
+      </div>
+    </div>`).join('');
+}
+
+async function saveMeeting(){
+  const data = {
+    id: uid(), meet_date: v('meetDate'), location_id: v('meetLocation'),
+    location_name: document.getElementById('meetLocation').options[document.getElementById('meetLocation').selectedIndex]?.text||'',
+    topic: v('meetTopic'), attendees_count: parseInt(v('meetAttendees'))||0,
+    notes: v('meetNotes'), created_at: new Date().toISOString(),
+  };
+  try{ await sb.post('a2_morning_meetings', data); }catch(e){ fallbackSave('morning_meetings', data); }
+  state.meetings.unshift(data);
+  toast('✓ Meeting log saved'); closeDrawer(); renderMeetings();
+  syncQueueAdd('morning_meetings', data);
+}
+
+// ══════════════════════════════════
+// LOCATIONS & CUSTOMERS
+// ══════════════════════════════════
+function renderLocations(){
+  const el = document.getElementById('locationList');
+  if(!state.locations.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">📍</div><p>No locations</p></div>'; return; }
+  el.innerHTML = state.locations.map(l=>`
+    <div class="list-item">
+      <div class="avatar" style="background:#455A64">📍</div>
+      <div class="item-info">
+        <div class="item-name">${l.name}</div>
+        <div class="item-sub">${l.address||'—'}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function saveLocation(){
+  const name = v('locName'); if(!name){ toast('Location name required'); return; }
+  const data = { id: uid(), name, address: v('locAddress'), created_at: new Date().toISOString() };
+  try{ await sb.post('a2_locations', data); }catch(e){ fallbackSave('locations', data); }
+  state.locations.push(data);
+  toast('✓ Location saved'); closeDrawer(); renderLocations(); populateSelects();
+}
+
+function renderCustomers(){
+  const el = document.getElementById('customerList');
+  if(!state.customers.length){ el.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No customers</p></div>'; return; }
+  el.innerHTML = state.customers.map(c=>`
+    <div class="list-item">
+      <div class="avatar" style="background:#455A64">🏢</div>
+      <div class="item-info">
+        <div class="item-name">${c.name}</div>
+        <div class="item-sub">${c.contact_person||'—'} · ${c.phone||'—'}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function saveCustomer(){
+  const name = v('custName'); if(!name){ toast('Customer name required'); return; }
+  const data = { id: uid(), name, contact_person: v('custContact'), phone: v('custPhone'), location: v('custLocation'), created_at: new Date().toISOString() };
+  try{ await sb.post('a2_customers', data); }catch(e){ fallbackSave('customers', data); }
+  state.customers.push(data);
+  toast('✓ Customer saved'); closeDrawer(); renderCustomers();
+}
+
+// ══════════════════════════════════
+// SELECTS / DROPDOWNS
+// ══════════════════════════════════
+function populateSelects(){
+  const empOpts = state.employees.filter(e=>e.status==='Active'||!e.status)
+    .map(e=>`<option value="${e.id}">${e.first_name} ${e.last_name}</option>`).join('');
+  ['caEmployee','otEmployee','leaveEmployee','valeEmployee'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '<option value="">— Select Employee —</option>' + empOpts;
+  });
+
+  const locOpts = state.locations.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+  ['empLocation','attAreaFilter','payArea','meetLocation'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      const isFilter = id.includes('Filter')||id==='payArea';
+      el.innerHTML = (isFilter?'<option value="">All Areas</option>':'<option value="">— Select —</option>') + locOpts;
+    }
+  });
+
+  const topicOpts = ['Safety Briefing','Work Updates','Quality Check','General Meeting','Inspection','Others']
+    .map(t=>`<option>${t}</option>`).join('');
+  const meetTopicEl = document.getElementById('meetTopic');
+  if(meetTopicEl) meetTopicEl.innerHTML = '<option value="">— Select —</option>' + topicOpts;
+}
+
+// ══════════════════════════════════
+// SYNC (Google Sheets)
+// ══════════════════════════════════
+let syncQueue = JSON.parse(localStorage.getItem('syncQueue')||'[]');
+
+function syncQueueAdd(table, data){
+  syncQueue.push({table, data, ts: Date.now()});
+  localStorage.setItem('syncQueue', JSON.stringify(syncQueue.slice(-100)));
+  document.getElementById('lastSyncTime').textContent = 'Pending sync (' + syncQueue.length + ' items)';
+}
+
+async function syncToSheets(){
+  toast('Pushing to Sheets… (requires Edge Function)');
+  try{
+    const resp = await fetch(CONFIG.supabaseUrl + '/functions/v1/sheets-sync', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+CONFIG.supabaseKey,'Content-Type':'application/json'},
+      body: JSON.stringify({action:'push', queue: syncQueue}),
+    });
+    if(resp.ok){
+      syncQueue = [];
+      localStorage.setItem('syncQueue','[]');
+      toast('✓ Synced to Google Sheets');
+      document.getElementById('lastSyncTime').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+    } else { toast('Sync failed: ' + resp.status); }
+  }catch(e){ toast('Edge Function not deployed yet. See README.'); }
+}
+
+async function syncFromSheets(){
+  toast('Pulling from Sheets… (requires Edge Function)');
+  try{
+    const resp = await fetch(CONFIG.supabaseUrl + '/functions/v1/sheets-sync', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+CONFIG.supabaseKey,'Content-Type':'application/json'},
+      body: JSON.stringify({action:'pull'}),
+    });
+    if(resp.ok){ toast('✓ Pulled from Google Sheets'); await loadAll(); }
+    else { toast('Pull failed: ' + resp.status); }
+  }catch(e){ toast('Edge Function not deployed yet. See README.'); }
+}
+
+function showSyncStatus(){ toast('Sync queue: ' + syncQueue.length + ' pending items'); }
+function openSyncDrawer(){ openDrawer('syncDrawer'); }
+
+// ══════════════════════════════════
+// DRAWER CONTROL
+// ══════════════════════════════════
+function openDrawer(id){
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById(id).classList.add('open');
+}
+function closeDrawer(){
+  document.getElementById('overlay').classList.remove('open');
+  document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'));
+}
+function openCADrawer(){ openDrawer('caDrawer'); }
+function openOTDrawer(){ openDrawer('otDrawer'); }
+function openLeaveDrawer(){ openDrawer('leaveDrawer'); }
+function openValeDrawer(){ openDrawer('valeDrawer'); }
+function openMeetingDrawer(){ openDrawer('meetingDrawer'); }
+function openLocationDrawer(){ openDrawer('locationDrawer'); }
+function openCustomerDrawer(){ openDrawer('customerDrawer'); }
+
+// ══════════════════════════════════
+// UTILS
+// ══════════════════════════════════
+function v(id){ return (document.getElementById(id)||{}).value?.trim()||''; }
+function fmt(n){ return Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+function dateDiff(a,b){ return Math.round((new Date(b)-new Date(a))/(864e5)); }
+function empName(id){ const e=state.employees.find(e=>e.id===id); return e?e.first_name+' '+e.last_name:'Unknown'; }
+function empPay(id){ const e=state.employees.find(e=>e.id===id); return e?.pay_per_day||0; }
+function chipClass(s){
+  if(!s||s==='Pending') return 'chip-orange';
+  if(['Active','Approved','Present','Released','Paid'].includes(s)) return 'chip-green';
+  if(['Resigned','Denied','Terminated'].includes(s)) return 'chip-red';
+  return 'chip-blue';
+}
+
+function toast(msg, dur=2800){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), dur);
+}
+
+function showDatePicker(){
+  const d = prompt('Enter date (YYYY-MM-DD):', state.currentAttDate);
+  if(!d) return;
+  state.currentAttDate = d;
+  document.getElementById('attDateLabel').textContent =
+    'Attendance — ' + new Date(d+'T00:00:00').toLocaleDateString('en-PH',{weekday:'long',month:'short',day:'numeric'});
+  sb.get('a2_attendance','att_date=eq.'+d).then(data=>{
+    state.attendance = {};
+    (data||[]).forEach(r=>state.attendance[r.employee_id]=r);
+    renderAttendance();
+  }).catch(()=>renderAttendance());
+}
+
+function fallbackSave(key, data){
+  const stored = JSON.parse(localStorage.getItem('offline_'+key)||'[]');
+  stored.push(data);
+  localStorage.setItem('offline_'+key, JSON.stringify(stored));
+}
+</script>
+</body>
+</html>
